@@ -1,0 +1,50 @@
+name: Release & Deployment Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Triggers on semantic tags like v1.0.0, v1.1.0
+
+jobs:
+  # Stage 1: Quality Gate
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Simulate Test Suite
+        run: |
+          echo "Running unit tests and static code analysis..."
+          sleep 3
+          echo "All release quality checks PASSED!"
+
+  # Stage 2: Create Release Notes & Tagging
+  create-release-notes:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to publish GitHub releases
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Draft Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Stage 3: Production Deployment (Gated)
+  deploy-production:
+    needs: create-release-notes
+    runs-on: ubuntu-latest
+    environment: production # Uses the environment protection rule set in Phase 2
+    steps:
+      - name: Deploy Build Artifact
+        run: |
+          echo "Deploying release tag ${{ github.ref_name }} to Production..."
+          echo "Deployment successful!"
